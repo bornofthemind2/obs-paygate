@@ -3,9 +3,9 @@ window.PAYGATE_CONFIG = {
   streamTitle: "Live Tonight",
   host: "Your Name",
   // Zoom meeting shown to buyers after checkout.
-  zoomJoinUrl: "https://zoom.us/j/00000000000?pwd=REPLACE_ME",
-  meetingId: "000 0000 0000",
-  passcode: "REPLACE_ME",
+  zoomJoinUrl: "https://us05web.zoom.us/j/83904000184?pwd=KLW8ZB4M0j1Gd0fvYy4aC4bFSu3tCq.1",
+  meetingId: "839 0400 0184",
+  passcode: "Included in the Join link",
   price: 9.99,
   currency: "USD",
   accessHours: 24,                // how long a purchase unlocks the stream
