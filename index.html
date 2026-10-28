@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Stream Access</title>
+<script src="config.js"></script>
+<style>
+  :root { --bg:#0d0b12; --card:#17141f; --line:#2a2536; --text:#f3f0f8; --muted:#a39db0; --accent:#ff3d7f; --accent2:#ff8a3d; --ok:#3ddc97; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:radial-gradient(1200px 600px at 50% -10%, #2a1230 0%, var(--bg) 60%); color:var(--text); font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; display:flex; align-items:center; justify-content:center; padding:24px 16px; }
+  .card { width:100%; max-width:440px; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:28px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .wide { max-width:960px; }
+  .live { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); animation:p 1.4s infinite; }
+  @keyframes p { 50% { opacity:.3 } }
+  h1 { margin:10px 0 4px; font-size:28px; line-height:1.2; }
+  .muted { color:var(--muted); font-size:14px; }
+  .price { margin:22px 0; padding:18px; border:1px solid var(--line); border-radius:12px; display:flex; justify-content:space-between; align-items:baseline; }
+  .price b { font-size:32px; }
+  ul { padding-left:18px; margin:0 0 22px; color:var(--muted); font-size:14px; }
+  button, .btn { display:block; width:100%; padding:14px; border:0; border-radius:12px; font:600 16px system-ui,sans-serif; color:#fff; background:linear-gradient(90deg,var(--accent),var(--accent2)); cursor:pointer; text-align:center; text-decoration:none; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--muted); margin-top:10px; }
+  button:disabled { opacity:.6; cursor:wait; }
+  label { display:block; font-size:13px; color:var(--muted); margin:12px 0 4px; }
+  input { width:100%; padding:12px; border-radius:10px; border:1px solid var(--line); background:#100e16; color:var(--text); font-size:15px; }
+  .row { display:flex; gap:10px; } .row > div { flex:1; }
+  .banner { font-size:12px; padding:8px 10px; border-radius:8px; background:#2b2410; color:#ffcf6b; margin-bottom:14px; }
+  .player { position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:12px; overflow:hidden; margin:16px 0; }
+  .player iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .ok { color:var(--ok); }
+  .hidden { display:none; }
+  .foot { margin-top:16px; font-size:12px; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+
+<!-- Age gate -->
+<section id="age" class="card hidden">
+  <span class="live">18+ only</span>
+  <h1>Adults only</h1>
+  <p class="muted">This stream is only for viewers 18 or older. By continuing you confirm that you're at least 18 and that viewing this content is legal where you live.</p>
+  <button id="ageYes">I am 18 or older</button>
+  <button class="ghost" onclick="location.href='https://www.google.com'">Leave</button>
+</section>
+
+<!-- Pay gate -->
+<section id="gate" class="card hidden">
+  <span class="live"><span class="dot"></span> Live now</span>
+  <h1 id="title"></h1>
+  <div class="muted">with <span id="host"></span></div>
+  <div class="price"><span class="muted">Stream pass</span><b id="price"></b></div>
+  <ul>
+    <li>Full access for <span id="hours"></span> hours</li>
+    <li>Works on phone, tablet and desktop</li>
+    <li>Instant access after checkout</li>
+  </ul>
+  <button id="buy">Unlock stream</button>
+  <div class="foot">Already paid on this device? Your access unlocks automatically.</div>
+</section>
+
+<!-- Mock checkout -->
+<section id="checkout" class="card hidden">
+  <div class="banner">Test mode: no real payment is taken. Enter any values.</div>
+  <h1 style="font-size:22px">Checkout</h1>
+  <div class="muted" id="coSummary"></div>
+  <form id="coForm">
+    <label>Email</label><input type="email" placeholder="you@example.com" required>
+    <label>Card number</label><input inputmode="numeric" placeholder="4242 4242 4242 4242" required>
+    <div class="row"><div><label>Expiry</label><input placeholder="MM/YY" required></div><div><label>CVC</label><input placeholder="123" required></div></div>
+    <div style="height:18px"></div>
+    <button id="payBtn" type="submit">Pay</button>
+    <button class="ghost" type="button" id="cancel">Cancel</button>
+  </form>
+</section>
+
+<!-- Unlocked -->
+<section id="watch" class="card wide hidden">
+  <span class="live"><span class="dot"></span> Live</span>
+  <h1 id="wTitle"></h1>
+  <div class="muted">Access active: <span class="ok" id="remain"></span> left</div>
+  <div class="player"><iframe id="frame" allow="autoplay; fullscreen" allowfullscreen></iframe></div>
+  <a class="btn" id="roomLink" target="_blank" rel="noopener">Open in Chaturbate</a>
+</section>
+
+<script>
+(function () {
+  var C = window.PAYGATE_CONFIG;
+  var KEY = "paygate_until_" + C.room, AGE = "paygate_age_ok";
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  var money = new Intl.NumberFormat(undefined, { style: "currency", currency: C.currency }).format(C.price);
+  var $ = function (id) { return document.getElementById(id); };
+
+  $("title").textContent = $("wTitle").textContent = C.streamTitle;
+  $("host").textContent = C.host;
+  $("price").textContent = money;
+  $("hours").textContent = C.accessHours;
+  $("coSummary").textContent = C.streamTitle + ": " + C.accessHours + "h pass · " + money;
+  $("payBtn").textContent = "Pay " + money;
+
+  function show(id) {
+    ["age", "gate", "checkout", "watch"].forEach(function (s) { $(s).classList.toggle("hidden", s !== id); });
+  }
+  function grant() {
+    set(KEY, String(Date.now() + C.accessHours * 3600e3));
+    history.replaceState(null, "", location.pathname);
+    route();
+  }
+  function until() { return Number(get(KEY) || 0); }
+  function tick() {
+    var ms = until() - Date.now();
+    if (ms <= 0) return route();
+    var h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 60e3);
+    $("remain").textContent = h + "h " + m + "m";
+  }
+  function route() {
+    if (C.ageGate && get(AGE) !== "1") return show("age");
+    if (new URLSearchParams(location.search).get("paid") === "1") return grant();
+    if (until() > Date.now()) {
+      if (!$("frame").src) $("frame").src = "https://chaturbate.com/embed/" + encodeURIComponent(C.room) + "/?bgcolor=black";
+      $("roomLink").href = "https://chaturbate.com/" + encodeURIComponent(C.room) + "/";
+      tick();
+      return show("watch");
+    }
+    $("frame").removeAttribute("src");
+    show("gate");
+  }
+
+  $("ageYes").onclick = function () { set(AGE, "1"); route(); };
+  $("buy").onclick = function () { if (C.checkoutUrl) location.href = C.checkoutUrl; else show("checkout"); };
+  $("cancel").onclick = function () { show("gate"); };
+  $("coForm").onsubmit = function (e) {
+    e.preventDefault();
+    var b = $("payBtn"); b.disabled = true; b.textContent = "Processing…";
+    setTimeout(grant, 1200);
+  };
+  setInterval(function () { if (!$("watch").classList.contains("hidden")) tick(); }, 30e3);
+  route();
+})();
+</script>
+</body>
+</html>
