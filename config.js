@@ -5,7 +5,7 @@ window.PAYGATE_CONFIG = {
   // Zoom meeting shown to buyers after checkout.
   zoomJoinUrl: "https://us05web.zoom.us/j/83904000184?pwd=KLW8ZB4M0j1Gd0fvYy4aC4bFSu3tCq.1",
   meetingId: "839 0400 0184",
-  passcode: "Included in the Join link",
+  passcode: "acFVq7",
   price: 9.99,
   currency: "USD",
   accessHours: 24,                // how long a purchase unlocks the stream
