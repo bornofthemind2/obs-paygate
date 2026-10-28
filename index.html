@@ -53,7 +53,7 @@
   <div class="price"><span class="muted">Stream pass</span><b id="price"></b></div>
   <ul>
     <li>Full access for <span id="hours"></span> hours</li>
-    <li>Works on phone, tablet and desktop</li>
+    <li>Private Zoom meeting on phone, tablet or desktop</li>
     <li>Instant access after checkout</li>
   </ul>
   <button id="buy">Unlock stream</button>
@@ -76,18 +76,22 @@
 </section>
 
 <!-- Unlocked -->
-<section id="watch" class="card wide hidden">
+<section id="watch" class="card hidden">
   <span class="live"><span class="dot"></span> Live</span>
   <h1 id="wTitle"></h1>
   <div class="muted">Access active: <span class="ok" id="remain"></span> left</div>
-  <div class="player"><iframe id="frame" allow="autoplay; fullscreen" allowfullscreen></iframe></div>
-  <a class="btn" id="roomLink" target="_blank" rel="noopener">Open in Chaturbate</a>
+  <div class="price" style="display:block">
+    <div class="muted">Meeting ID</div><b id="mId" style="font-size:22px"></b>
+    <div class="muted" style="margin-top:10px">Passcode</div><b id="mPass" style="font-size:22px"></b>
+  </div>
+  <a class="btn" id="roomLink" target="_blank" rel="noopener">Join on Zoom</a>
+  <div class="foot">Join with the name or email you used at checkout so the host can let you in from the waiting room.</div>
 </section>
 
 <script>
 (function () {
   var C = window.PAYGATE_CONFIG;
-  var KEY = "paygate_until_" + C.room, AGE = "paygate_age_ok";
+  var KEY = "paygate_until_" + C.meetingId, AGE = "paygate_age_ok";
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   var money = new Intl.NumberFormat(undefined, { style: "currency", currency: C.currency }).format(C.price);
@@ -119,12 +123,12 @@
     if (C.ageGate && get(AGE) !== "1") return show("age");
     if (new URLSearchParams(location.search).get("paid") === "1") return grant();
     if (until() > Date.now()) {
-      if (!$("frame").src) $("frame").src = "https://chaturbate.com/embed/" + encodeURIComponent(C.room) + "/?bgcolor=black";
-      $("roomLink").href = "https://chaturbate.com/" + encodeURIComponent(C.room) + "/";
+      $("roomLink").href = C.zoomJoinUrl;
+      $("mId").textContent = C.meetingId;
+      $("mPass").textContent = C.passcode;
       tick();
       return show("watch");
     }
-    $("frame").removeAttribute("src");
     show("gate");
   }
 

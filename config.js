@@ -2,7 +2,10 @@
 window.PAYGATE_CONFIG = {
   streamTitle: "Live Tonight",
   host: "Your Name",
-  room: "your_chaturbate_room",   // Chaturbate username/room
+  // Zoom meeting shown to buyers after checkout.
+  zoomJoinUrl: "https://zoom.us/j/00000000000?pwd=REPLACE_ME",
+  meetingId: "000 0000 0000",
+  passcode: "REPLACE_ME",
   price: 9.99,
   currency: "USD",
   accessHours: 24,                // how long a purchase unlocks the stream
