@@ -1,6 +1,6 @@
 // Edit these values, commit, and Render redeploys automatically.
 window.PAYGATE_CONFIG = {
-  streamTitle: "Live Tonight",
+  streamTitle: "Private Room",
   host: "Your Name",
   // Zoom meeting shown to buyers after checkout.
   zoomJoinUrl: "https://us05web.zoom.us/j/83904000184?pwd=KLW8ZB4M0j1Gd0fvYy4aC4bFSu3tCq.1",
