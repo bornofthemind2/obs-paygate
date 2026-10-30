@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Private Room</title>
+<script src="https://cdn.jsdelivr.net/npm/@mux/mux-player@2.4.0" defer></script>
+<style>
+  :root { --bg:#0d0b12; --card:#17141f; --line:#2a2536; --text:#f3f0f8; --muted:#a39db0; --accent:#ff3d7f; --accent2:#ff8a3d; --ok:#3ddc97; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:radial-gradient(1200px 600px at 50% -10%, #2a1230 0%, var(--bg) 60%); color:var(--text); font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; display:flex; align-items:center; justify-content:center; padding:24px 16px; }
+  .card { width:100%; max-width:440px; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:28px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .wide { max-width:1000px; }
+  .live { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); animation:p 1.4s infinite; }
+  @keyframes p { 50% { opacity:.3 } }
+  h1 { margin:10px 0 4px; font-size:28px; line-height:1.2; }
+  .muted { color:var(--muted); font-size:14px; }
+  .price { margin:22px 0; padding:18px; border:1px solid var(--line); border-radius:12px; display:flex; justify-content:space-between; align-items:baseline; }
+  .price b { font-size:32px; }
+  ul { padding-left:18px; margin:0 0 22px; color:var(--muted); font-size:14px; }
+  button { display:block; width:100%; padding:14px; border:0; border-radius:12px; font:600 16px system-ui,sans-serif; color:#fff; background:linear-gradient(90deg,var(--accent),var(--accent2)); cursor:pointer; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--muted); margin-top:10px; }
+  button:disabled { opacity:.6; cursor:wait; }
+  .banner { font-size:12px; padding:8px 10px; border-radius:8px; background:#2b2410; color:#ffcf6b; margin-bottom:14px; }
+  .err { color:#ff6b6b; font-size:14px; margin-top:10px; min-height:1em; }
+  mux-player, .offline { display:block; width:100%; aspect-ratio:16/9; background:#000; border-radius:12px; overflow:hidden; margin:16px 0; --media-object-fit:contain; }
+  .offline { display:flex; align-items:center; justify-content:center; color:var(--muted); text-align:center; padding:16px; }
+  .ok { color:var(--ok); }
+  .hidden { display:none !important; }
+  .foot { margin-top:16px; font-size:12px; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+
+<section id="loading" class="card"><div class="muted">Loading…</div></section>
+
+<section id="age" class="card hidden">
+  <span class="live">18+ only</span>
+  <h1>Adults only</h1>
+  <p class="muted">This stream is only for viewers 18 or older. By continuing you confirm that you're at least 18 and that viewing this content is legal where you live.</p>
+  <button id="ageYes">I am 18 or older</button>
+  <button class="ghost" onclick="location.href='https://www.google.com'">Leave</button>
+</section>
+
+<section id="gate" class="card hidden">
+  <div id="mockBanner" class="banner hidden">Test mode: checkout is simulated and no money is taken.</div>
+  <span class="live"><span class="dot"></span> Live stream</span>
+  <h1 class="title"></h1>
+  <div class="muted" id="hostLine"></div>
+  <div class="price"><span class="muted">Stream pass</span><b id="price"></b></div>
+  <ul>
+    <li>Watch for <span id="hours"></span> hours from purchase</li>
+    <li>Plays right here on phone, tablet or desktop</li>
+    <li>Secure checkout by Stripe</li>
+  </ul>
+  <button id="buy">Unlock stream</button>
+  <div class="err" id="err"></div>
+  <div class="foot">Already paid on this device? Your access unlocks automatically.</div>
+</section>
+
+<section id="watch" class="card wide hidden">
+  <span class="live"><span class="dot"></span> Live</span>
+  <h1 class="title"></h1>
+  <div class="muted">Pass active: <span class="ok" id="remain"></span> left</div>
+  <div id="playerWrap"></div>
+  <div class="foot">If the player says the stream isn't live yet, keep this page open: it starts when the broadcast begins.</div>
+</section>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var C, passExp = 0;
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function show(id) { ["loading", "age", "gate", "watch"].forEach(function (s) { $(s).classList.toggle("hidden", s !== id); }); }
+
+  function tick() {
+    var ms = passExp - Date.now();
+    if (ms <= 0) return location.reload();
+    $("remain").textContent = Math.floor(ms / 3600e3) + "h " + Math.floor(ms % 3600e3 / 60e3) + "m";
+  }
+
+  function mountPlayer(a) {
+    var wrap = $("playerWrap");
+    if (!a.streamReady) { wrap.innerHTML = '<div class="offline">The stream isn\'t set up yet. Check back soon.</div>'; return; }
+    var p = document.createElement("mux-player");
+    p.setAttribute("playback-id", a.playbackId);
+    p.setAttribute("playback-token", a.token);
+    p.setAttribute("thumbnail-token", a.thumbToken);
+    p.setAttribute("stream-type", "live");
+    p.setAttribute("autoplay", "muted");
+    p.setAttribute("accent-color", "#ff3d7f");
+    p.setAttribute("metadata-video-title", C.title);
+    wrap.innerHTML = ""; wrap.appendChild(p);
+  }
+
+  function route() {
+    if (C.ageGate && get("pg_age") !== "1") return show("age");
+    fetch("/api/access", { credentials: "same-origin" }).then(function (r) {
+      if (r.status !== 200) return show("gate");
+      return r.json().then(function (a) {
+        passExp = a.exp; tick(); setInterval(tick, 30e3);
+        mountPlayer(a); show("watch");
+      });
+    }).catch(function () { show("gate"); });
+  }
+
+  $("ageYes").onclick = function () { set("pg_age", "1"); route(); };
+  $("buy").onclick = function () {
+    var b = this; b.disabled = true; b.textContent = "Opening checkout…"; $("err").textContent = "";
+    fetch("/api/checkout", { method: "POST", credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (!j.url) throw new Error(j.error || "Checkout failed"); location.href = j.url; })
+      .catch(function (e) { $("err").textContent = e.message; b.disabled = false; b.textContent = "Unlock stream"; });
+  };
+
+  fetch("/api/config").then(function (r) { return r.json(); }).then(function (cfg) {
+    C = cfg;
+    var money = new Intl.NumberFormat(undefined, { style: "currency", currency: C.currency.toUpperCase() }).format(C.priceCents / 100);
+    document.querySelectorAll(".title").forEach(function (el) { el.textContent = C.title; });
+    document.title = C.title;
+    $("hostLine").textContent = C.host ? "with " + C.host : "";
+    $("price").textContent = money;
+    $("hours").textContent = C.accessHours;
+    $("mockBanner").classList.toggle("hidden", !C.mock);
+    if (new URLSearchParams(location.search).get("unpaid")) $("err").textContent = "Payment wasn't completed.";
+    if (location.search) history.replaceState(null, "", "/");
+    route();
+  });
+})();
+</script>
+</body>
+</html>
